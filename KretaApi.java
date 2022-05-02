@@ -1,20 +1,16 @@
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.apache.commons.codec.binary.Hex;
-
 class KretaApi {
     public static void main(String[] args) {
         Kreta kreta = new Kreta("USERNAME", "PASSWORD", "bkszc-pogany", "e-kreta.hu");
@@ -102,17 +98,32 @@ class KretaApi {
         }
 
         public static String generateHMACSignature(byte[] key, String message) {
-            SecretKeySpec ks = new SecretKeySpec(key, "HmacSHA512");
+            String hash = null;
 
             try {
-                Mac mac = Mac.getInstance("HmacSHA512");
-                mac.init(ks);
-                byte[] rawHmac = mac.doFinal(message.getBytes());
-
-                return Hex.encodeHexString(rawHmac);
-            } catch (InvalidKeyException | NoSuchAlgorithmException e) {
+                hash = SHA512Hasher(message);
+            } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
+
+            return hash;
+        }
+ 
+        private static String SHA512Hasher(String stringToHash) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+            MessageDigest messageDigest = MessageDigest.getInstance("SHA-512");
+            messageDigest.reset();
+
+            byte[] buffer = stringToHash.getBytes("UTF-8");
+            messageDigest.update(buffer);
+
+            byte[] digest = messageDigest.digest();
+            String hexString = "";
+
+            for (int i = 0; i < digest.length; i++) {
+                hexString += Integer.toString((digest[i] & 0xff) + 0x100, 16).substring(1);
+            }
+
+            return hexString;
         }
     }
 
