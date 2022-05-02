@@ -1,10 +1,12 @@
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
@@ -177,12 +179,8 @@ class KretaApi {
             // Reference: https://github.com/filc/naplo/blob/home_hidden_ids/filcnaplo/lib/api/nonce.dart
             String digest = Helpers.generateHMACSignature(key, message);
 
-            JSONObject data = new JSONObject();
-            data.put("userName", user);
-            data.put("password", password);
-            data.put("institute_code", institute);
-            data.put("grant_type", "password");
-            data.put("client_id", clientId);
+            String data = String.format("password=%s&institute_code=%s&grant_type=%s&userName=%s&client_id=%s", password, institute, "password", user, clientId);
+            data = URLEncoder.encode(data, StandardCharsets.UTF_8);
 
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
@@ -192,17 +190,17 @@ class KretaApi {
                     .setHeader("X-AuthorizationPolicy-Key", Base64.getEncoder().encodeToString(digest.getBytes()))
                     .setHeader("X-AuthorizationPolicy-Version", "v1")
                     .setHeader("X-AuthorizationPolicy-Nonce", nonce)
-                    .POST(BodyPublishers.ofString(data.toString()))
+                    .POST(BodyPublishers.ofString(String.format("password=%s&institute_code=%s&grant_type=%s&userName=%s&client_id=%s", password, institute, "password", user, clientId)))
                     .build();
 
             try {
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
                 System.out.println(request.headers());
-                System.out.println(data.toString());
+                System.out.println(data);
                 if (response.statusCode() == 400) {
                     String url = endpoints.IDENTITY_PROVIDER + endpoints.TOKEN;
-                    throw new Exceptions.InvalidClientException(response.statusCode(), response.body(), url, data.toString());
+                    throw new Exceptions.InvalidClientException(response.statusCode(), response.body(), url, data);
                 } else {
                     System.out.println(response.statusCode());
                     return response.body();
