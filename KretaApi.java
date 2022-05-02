@@ -190,7 +190,7 @@ class KretaApi {
                     .setHeader("X-AuthorizationPolicy-Key", Base64.getEncoder().encodeToString(digest.getBytes()))
                     .setHeader("X-AuthorizationPolicy-Version", "v1")
                     .setHeader("X-AuthorizationPolicy-Nonce", nonce)
-                    .POST(BodyPublishers.ofString(String.format("password=%s&institute_code=%s&grant_type=%s&userName=%s&client_id=%s", password, institute, "password", user, clientId)))
+                    .POST(BodyPublishers.ofString(data))
                     .build();
 
             try {
