@@ -20,8 +20,6 @@ class KretaApi {
         Kreta kreta = new Kreta("USERNAME", "PASSWORD", "bkszc-pogany", "e-kreta.hu");
         System.out.println("It works!");
 
-        // System.out.println(Helpers.getRequest("https://idp.e-kreta.hu/nonce")); 
-
         System.out.println(kreta.getAccessToken());
         // System.out.println(kreta.fetchInstituteList());
     }
