@@ -1,26 +1,29 @@
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.nio.charset.StandardCharsets;
-import java.net.URLEncoder;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.apache.commons.codec.digest.*;
+import org.apache.commons.codec.binary.Hex;
 
 class KretaApi {
     public static void main(String[] args) {
         Kreta kreta = new Kreta("USERNAME", "PASSWORD", "bkszc-pogany", "e-kreta.hu");
         System.out.println("It works!");
 
-        //System.out.println(Helpers.getRequest("https://idp.e-kreta.hu/nonce")); 
+        // System.out.println(Helpers.getRequest("https://idp.e-kreta.hu/nonce")); 
 
         System.out.println(kreta.getAccessToken());
-        //System.out.println(kreta.fetchInstituteList());
+        // System.out.println(kreta.fetchInstituteList());
     }
 
     public static class Endpoints {
@@ -99,6 +102,20 @@ class KretaApi {
                 throw new RuntimeException(e);
             }
         }
+
+        public static String generateHMACSignature(byte[] key, String message) {
+            SecretKeySpec ks = new SecretKeySpec(key, "HmacSHA512");
+
+            try {
+                Mac mac = Mac.getInstance("HmacSHA512");
+                mac.init(ks);
+                byte[] rawHmac = mac.doFinal(message.getBytes());
+
+                return Hex.encodeHexString(rawHmac);
+            } catch (InvalidKeyException | NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public static class Exceptions {
@@ -145,13 +162,11 @@ class KretaApi {
              * to the API.
             */
             byte[] key = {53, 75, 109, 112, 109, 103, 100, 53, 102, 74};
-            String nonce = Helpers.getRequest(endpoints.IDENTITY_PROVIDER + endpoints.NONCE);
 
-            byte[] message = (user.toLowerCase() + institute.toLowerCase() + nonce).getBytes(StandardCharsets.UTF_8);
+            String message = user.toLowerCase() + institute.toLowerCase() + getNonce();
 
             // Reference: https://github.com/filc/naplo/blob/home_hidden_ids/filcnaplo/lib/api/nonce.dart
-            String digest = new HmacUtils(HmacAlgorithms.HMAC_SHA_512, key).hmacHex(message);
-            byte[] encodedDigest = Base64.getEncoder().encode(digest.getBytes());
+            String digest = Helpers.generateHMACSignature(key, message);
 
             JSONObject data = new JSONObject();
             data.put("userName", user);
@@ -165,7 +180,7 @@ class KretaApi {
                     .uri(URI.create(endpoints.IDENTITY_PROVIDER + endpoints.TOKEN))
                     .setHeader("Content-Type", "application/x-www-form-urlencoded; charset=utf-8")
                     .setHeader("User-Agent", userAgent)
-                    .setHeader("X-AuthorizationPolicy-Key", encodedDigest.toString())
+                    .setHeader("X-AuthorizationPolicy-Key", Base64.getEncoder().encodeToString(digest.getBytes()))
                     .setHeader("X-AuthorizationPolicy-Version", "v1")
                     .setHeader("X-AuthorizationPolicy-Nonce", getNonce())
                     .POST(BodyPublishers.ofString(data.toString()))
@@ -313,12 +328,27 @@ class KretaApi {
             return 0;
         }
 
-        public static int calculateAverage(int [] grades) {
+        public static double calculateAverage(int[] grades) throws IllegalArgumentException {
             /**
              * Calculates the student's avarage. The official mobile app
              * and other community projects already have this feature.
              */
-            return 0;
+
+            if (grades.length > 0) {
+                float x = 0;
+                for (int grade : grades) {
+                    if (grade >= 1 && grade <= 5) {
+                        x += grade;
+                    } else {
+                        throw new IllegalArgumentException("Invalid grade \"" + grade + "\". Valid grades are 1, 2, 3, 4 and 5.");
+                    }
+                }
+
+                float y =  x / grades.length;
+                return Math.round(y * 100.0) / 100.0;
+            } else {
+                throw new IllegalArgumentException();
+            }
         }
 
         public static int calculateScholarship(int[] grades) {
