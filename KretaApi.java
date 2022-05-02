@@ -160,8 +160,8 @@ class KretaApi {
              * to the API.
             */
             byte[] key = {53, 75, 109, 112, 109, 103, 100, 53, 102, 74};
-
-            String message = user.toLowerCase() + institute.toLowerCase() + getNonce();
+            String nonce = getNonce();
+            String message = user.toLowerCase() + institute.toLowerCase() + nonce;
 
             // Reference: https://github.com/filc/naplo/blob/home_hidden_ids/filcnaplo/lib/api/nonce.dart
             String digest = Helpers.generateHMACSignature(key, message);
@@ -180,7 +180,7 @@ class KretaApi {
                     .setHeader("User-Agent", userAgent)
                     .setHeader("X-AuthorizationPolicy-Key", Base64.getEncoder().encodeToString(digest.getBytes()))
                     .setHeader("X-AuthorizationPolicy-Version", "v1")
-                    .setHeader("X-AuthorizationPolicy-Nonce", getNonce())
+                    .setHeader("X-AuthorizationPolicy-Nonce", nonce)
                     .POST(BodyPublishers.ofString(data.toString()))
                     .build();
 
